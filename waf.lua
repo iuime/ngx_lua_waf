@@ -64,6 +64,10 @@ elseif PostCheck then
 	 ngx.req.finish_body()
     else
 			ngx.req.read_body()
+			local args, err = ngx.req.get_post_args(100)
+			if err == "truncated" then
+				ngx.exit(503)
+			end
 			local args = ngx.req.get_post_args()
 			if not args then
 				return

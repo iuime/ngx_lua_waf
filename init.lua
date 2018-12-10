@@ -12,6 +12,7 @@ CookieCheck = optionIsOn(cookieMatch)
 WhiteCheck = optionIsOn(whiteModule)
 PathInfoFix = optionIsOn(PathInfoFix)
 attacklog = optionIsOn(attacklog)
+CCattacklog = optionIsOn(CCattacklog)
 CCDeny = optionIsOn(CCDeny)
 Redirect=optionIsOn(Redirect)
 function getClientIp()
@@ -43,6 +44,42 @@ function log(method,url,data,ruletag)
         write(filename,line)
     end
 end
+
+
+function cclog()
+    if CCattacklog then
+        local realIp = getClientIp()
+        local ua = ngx.var.http_user_agent
+        local servername=ngx.var.server_name
+        local time=ngx.localtime()
+        local url = ngx.var.request_uri
+        local method = ngx.var.request_method
+        if ua  then
+            line = realIp.." ["..time.."] \""..method.." "..servername..url.."\" \"  \""..ua.."\" \"CC\"\n"
+        else
+            line = realIp.." ["..time.."] \""..method.." "..servername..url.."\" \" - \"CC\"\n"
+        end
+        local filename = logpath..'/'..servername.."_"..ngx.today().."_sec-cc.log"
+        write(filename,line)
+    end
+end
+
+
+function say_html()
+    if Redirect then
+        local nowhtml = html
+        ngx.header.content_type = "text/html"
+        nowhtml = string.gsub(nowhtml, "{ip}", ngx.var.remote_addr)
+        --nowhtml = string.gsub(nowhtml, "{ua}", ngx.var.http_user_agent)
+        nowhtml = string.gsub(nowhtml, "{host}", ngx.var.host)
+        --nowhtml = string.gsub(nowhtml, "{url}", ngx.var.request_uri)
+        nowhtml = string.gsub(nowhtml, "{time}", ngx.localtime())
+        --nowhtml = string.gsub(nowhtml, "{reason}", reason)
+        ngx.say(nowhtml)
+        ngx.exit(200)
+    end
+end
+
 ------------------------------------规则读取函数-------------------------------------------------------------------
 function read_rule(var)
     file = io.open(rulepath..'/'..var,"r")
@@ -65,11 +102,20 @@ postrules=read_rule('post')
 ckrules=read_rule('cookie')
 
 
-function say_html()
+function bak_say_html()
     if Redirect then
         ngx.header.content_type = "text/html"
         ngx.status = ngx.HTTP_FORBIDDEN
         ngx.say(html)
+        ngx.exit(ngx.status)
+    end
+end
+
+function cc_html()
+    if Redirect then
+        ngx.header.content_type = "text/html"
+        ngx.status = ngx.HTTP_FORBIDDEN
+        ngx.say(cchtml)
         ngx.exit(ngx.status)
     end
 end
@@ -106,6 +152,10 @@ function Set (list)
 end
 function args()
     for _,rule in pairs(argsrules) do
+        local args, err = ngx.req.get_uri_args(100)
+        if err == "truncated" then
+            ngx.exit(503)
+        end
         local args = ngx.req.get_uri_args()
         for key, val in pairs(args) do
             if type(val)=='table' then
@@ -191,7 +241,8 @@ function denycc()
         local req,_=limit:get(token)
         if req then
             if req > CCcount then
-                 ngx.exit(503)
+                 cclog()
+                 cc_html()
                 return true
             else
                  limit:incr(token,1)

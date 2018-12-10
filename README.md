@@ -1,3 +1,8 @@
+基于loveshell的https://github.com/loveshell/ngx_lua_waf
+
+##修复了超出100个参数后自动放行问题
+lua-nginx-module需要升级v0.10.13版本或以上
+
 ##ngx_lua_waf
 
 ngx_lua_waf是我刚入职趣游时候开发的一个基于ngx_lua的web应用防火墙。
@@ -51,6 +56,8 @@ nginx安装路径假设为:/usr/local/nginx/conf/
         --规则存放目录
         attacklog = "off"
         --是否开启攻击信息记录，需要配置logdir
+	CCattacklog = "on"
+	--是否开启CC攻击信息记录
         logdir = "/usr/local/nginx/logs/hack/"
         --log存储目录，该目录需要用户自己新建，切需要nginx用户的可写权限
         UrlDeny="on"
